@@ -27,7 +27,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 Commands ka use karo aur commands ka pura list dekhne ke liye type karo: /help
 
 💬 *Queries or Issues?* 💬
-Contact Admin: @RAHUL BHAI
+Contact Admin: @RAHUL_DDOS_B BHAI
 """
     await update.message.reply_text(welcome_message, parse_mode="Markdown")
 
@@ -43,7 +43,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 1️⃣ 🔥 /attack <ip> <port> <duration>
    - Is command ka use karke tum attack laga sakte ho.
    - Example: /attack 192.168.1.1 20876 240
-   - 📝 Note: Duration 240 seconds se zyada nahi ho sakta.
+   - 📝 Note: Duration 300 seconds se zyada nahi ho sakta.
 
 2️⃣ 💳 /myinfo
    - Apne account ka status aur coins check karne ke liye.
@@ -57,7 +57,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 🚨 𝐈𝐦𝐩𝐨𝐫𝐭𝐚𝐧𝐭 𝐓𝐢𝐩𝐬: 🚨
 - BOT REPLY NAA DE ISKA MATLAB KOI AUR BNDA ATTACK LAGYA HAI SO WAIT.
-- Agar koi dikkat aaye toh admin ko contact karo: @RAHUL BHAI
+- Agar koi dikkat aaye toh admin ko contact karo: @RAHUL_DDOS_B BHAI
 
 💥 Ab jao aur hacker banne ka natak shuru karo! 💥
 """
