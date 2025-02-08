@@ -14,7 +14,7 @@ start_time = time.time()  # Record bot's start time
 # Define the /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     welcome_message = """
-❄️ *WELCOME TO @RAHUL BHAI ULTIMATE UDP FLOODER* ❄️
+❄️ *WELCOME TO @RAHUL_DDOS_B BHAI ULTIMATE UDP FLOODER* ❄️
 
 🔥 Yeh bot apko deta hai hacking ke maidan mein asli mazza! 🔥
 
@@ -247,7 +247,7 @@ async def uptime(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Main function to set up the bot
 def main():
-    app = ApplicationBuilder().token("7899116336:AAFUdNXODTuAyZooj1t5NgcDATLrxxEAbBA").build()
+    app = ApplicationBuilder().token("7899116336:AAEvyWVZMm43a1XgbpWalRvi7zGB4mRU_2g").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
